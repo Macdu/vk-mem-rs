@@ -1,5 +1,6 @@
+use vulkanite::vk;
+
 use crate::ffi;
-use ash::prelude::VkResult;
 use std::mem;
 
 use crate::definitions::*;
@@ -19,7 +20,7 @@ unsafe impl Sync for VirtualAllocation {}
 
 impl VirtualBlock {
     /// Creates new VirtualBlock object.
-    pub fn new(create_info: VirtualBlockCreateInfo) -> VkResult<Self> {
+    pub fn new(create_info: VirtualBlockCreateInfo) -> vk::Result<Self> {
         unsafe {
             let mut internal: ffi::VmaVirtualBlock = mem::zeroed();
             let raw_info = ffi::VmaVirtualBlockCreateInfo {
@@ -30,7 +31,7 @@ impl VirtualBlock {
                     .map(|a| std::mem::transmute(a))
                     .unwrap_or(std::ptr::null()),
             };
-            ffi::vmaCreateVirtualBlock(&raw_info, &mut internal).result()?;
+            ffi::vmaCreateVirtualBlock(&raw_info, &mut internal).into_result()?;
 
             Ok(VirtualBlock { internal })
         }
@@ -45,12 +46,12 @@ impl VirtualBlock {
     pub unsafe fn allocate(
         &mut self,
         allocation_info: VirtualAllocationCreateInfo,
-    ) -> VkResult<(VirtualAllocation, u64)> {
+    ) -> vk::Result<(VirtualAllocation, u64)> {
         let create_info: ffi::VmaVirtualAllocationCreateInfo = allocation_info.into();
         let mut allocation: ffi::VmaVirtualAllocation = std::mem::zeroed();
         let mut offset = 0;
         ffi::vmaVirtualAllocate(self.internal, &create_info, &mut allocation, &mut offset)
-            .result()?;
+            .into_result()?;
         Ok((VirtualAllocation(allocation), offset))
     }
 
@@ -78,7 +79,7 @@ impl VirtualBlock {
     pub unsafe fn get_allocation_info(
         &self,
         allocation: &VirtualAllocation,
-    ) -> VkResult<VirtualAllocationInfo> {
+    ) -> vk::Result<VirtualAllocationInfo> {
         let mut allocation_info: ffi::VmaVirtualAllocationInfo = mem::zeroed();
         ffi::vmaGetVirtualAllocationInfo(self.internal, allocation.0, &mut allocation_info);
         Ok(allocation_info.into())

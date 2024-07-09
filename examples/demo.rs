@@ -1,4 +1,4 @@
-extern crate ash;
+extern crate vulkanite;
 extern crate vk_mem;
 
 /*

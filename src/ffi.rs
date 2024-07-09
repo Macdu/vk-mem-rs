@@ -3,7 +3,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-use ash::vk::*;
+use vulkanite::vk::{Flags, DeviceSize, raw::DeviceMemory, raw::PhysicalDevice, raw::Device, raw::Buffer, raw::Image, raw::Instance};
+use vulkanite::vk::{AllocationCallbacks, Bool32, BufferCreateInfo, ExternalMemoryHandleTypeFlagsKHR, ImageCreateInfo, MemoryPropertyFlags, MemoryRequirements, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties, Status as Result};
 
 #[repr(u32)]
 #[doc = " Flags for created #VmaAllocator."]
@@ -255,40 +256,40 @@ pub struct VmaDeviceMemoryCallbacks {
 #[repr(C)]
 pub struct VmaVulkanFunctions {
     #[doc = " Required when using VMA_DYNAMIC_VULKAN_FUNCTIONS."]
-    pub vkGetInstanceProcAddr: PFN_vkGetInstanceProcAddr,
+    pub vkGetInstanceProcAddr: *const (),
     #[doc = " Required when using VMA_DYNAMIC_VULKAN_FUNCTIONS."]
-    pub vkGetDeviceProcAddr: PFN_vkGetDeviceProcAddr,
-    pub vkGetPhysicalDeviceProperties: PFN_vkGetPhysicalDeviceProperties,
-    pub vkGetPhysicalDeviceMemoryProperties: PFN_vkGetPhysicalDeviceMemoryProperties,
-    pub vkAllocateMemory: PFN_vkAllocateMemory,
-    pub vkFreeMemory: PFN_vkFreeMemory,
-    pub vkMapMemory: PFN_vkMapMemory,
-    pub vkUnmapMemory: PFN_vkUnmapMemory,
-    pub vkFlushMappedMemoryRanges: PFN_vkFlushMappedMemoryRanges,
-    pub vkInvalidateMappedMemoryRanges: PFN_vkInvalidateMappedMemoryRanges,
-    pub vkBindBufferMemory: PFN_vkBindBufferMemory,
-    pub vkBindImageMemory: PFN_vkBindImageMemory,
-    pub vkGetBufferMemoryRequirements: PFN_vkGetBufferMemoryRequirements,
-    pub vkGetImageMemoryRequirements: PFN_vkGetImageMemoryRequirements,
-    pub vkCreateBuffer: PFN_vkCreateBuffer,
-    pub vkDestroyBuffer: PFN_vkDestroyBuffer,
-    pub vkCreateImage: PFN_vkCreateImage,
-    pub vkDestroyImage: PFN_vkDestroyImage,
-    pub vkCmdCopyBuffer: PFN_vkCmdCopyBuffer,
+    pub vkGetDeviceProcAddr: *const (),
+    pub vkGetPhysicalDeviceProperties: *const (),
+    pub vkGetPhysicalDeviceMemoryProperties: *const (),
+    pub vkAllocateMemory: *const (),
+    pub vkFreeMemory: *const (),
+    pub vkMapMemory: *const (),
+    pub vkUnmapMemory: *const (),
+    pub vkFlushMappedMemoryRanges: *const (),
+    pub vkInvalidateMappedMemoryRanges: *const (),
+    pub vkBindBufferMemory: *const (),
+    pub vkBindImageMemory: *const (),
+    pub vkGetBufferMemoryRequirements: *const (),
+    pub vkGetImageMemoryRequirements: *const (),
+    pub vkCreateBuffer: *const (),
+    pub vkDestroyBuffer: *const (),
+    pub vkCreateImage: *const (),
+    pub vkDestroyImage: *const (),
+    pub vkCmdCopyBuffer: *const (),
     #[doc = " Fetch \"vkGetBufferMemoryRequirements2\" on Vulkan >= 1.1, fetch \"vkGetBufferMemoryRequirements2KHR\" when using VK_KHR_dedicated_allocation extension."]
-    pub vkGetBufferMemoryRequirements2KHR: PFN_vkGetBufferMemoryRequirements2,
+    pub vkGetBufferMemoryRequirements2KHR: *const (),
     #[doc = " Fetch \"vkGetImageMemoryRequirements2\" on Vulkan >= 1.1, fetch \"vkGetImageMemoryRequirements2KHR\" when using VK_KHR_dedicated_allocation extension."]
-    pub vkGetImageMemoryRequirements2KHR: PFN_vkGetImageMemoryRequirements2,
+    pub vkGetImageMemoryRequirements2KHR: *const (),
     #[doc = " Fetch \"vkBindBufferMemory2\" on Vulkan >= 1.1, fetch \"vkBindBufferMemory2KHR\" when using VK_KHR_bind_memory2 extension."]
-    pub vkBindBufferMemory2KHR: PFN_vkBindBufferMemory2,
+    pub vkBindBufferMemory2KHR: *const (),
     #[doc = " Fetch \"vkBindImageMemory2\" on Vulkan >= 1.1, fetch \"vkBindImageMemory2KHR\" when using VK_KHR_bind_memory2 extension."]
-    pub vkBindImageMemory2KHR: PFN_vkBindImageMemory2,
+    pub vkBindImageMemory2KHR: *const (),
     #[doc = " Fetch from \"vkGetPhysicalDeviceMemoryProperties2\" on Vulkan >= 1.1, but you can also fetch it from \"vkGetPhysicalDeviceMemoryProperties2KHR\" if you enabled extension VK_KHR_get_physical_device_properties2."]
-    pub vkGetPhysicalDeviceMemoryProperties2KHR: PFN_vkGetPhysicalDeviceMemoryProperties2,
+    pub vkGetPhysicalDeviceMemoryProperties2KHR: *const (),
     #[doc = " Fetch from \"vkGetDeviceBufferMemoryRequirements\" on Vulkan >= 1.3, but you can also fetch it from \"vkGetDeviceBufferMemoryRequirementsKHR\" if you enabled extension VK_KHR_maintenance4."]
-    pub vkGetDeviceBufferMemoryRequirements: PFN_vkGetDeviceBufferMemoryRequirements,
+    pub vkGetDeviceBufferMemoryRequirements: *const (),
     #[doc = " Fetch from \"vkGetDeviceImageMemoryRequirements\" on Vulkan >= 1.3, but you can also fetch it from \"vkGetDeviceImageMemoryRequirementsKHR\" if you enabled extension VK_KHR_maintenance4."]
-    pub vkGetDeviceImageMemoryRequirements: PFN_vkGetDeviceImageMemoryRequirements,
+    pub vkGetDeviceImageMemoryRequirements: *const (),
 }
 #[doc = " Description of a Allocator to be created."]
 #[repr(C)]
@@ -302,7 +303,7 @@ pub struct VmaAllocatorCreateInfo {
     #[doc = " Preferred size of a single `VkDeviceMemory` block to be allocated from large heaps > 1 GiB. Optional.\n** Set to 0 to use default, which is currently 256 MiB. */"]
     pub preferredLargeHeapBlockSize: DeviceSize,
     #[doc = " Custom CPU memory allocation callbacks. Optional.\n** Optional, can be null. When specified, will also be used for all CPU-side memory allocations. */"]
-    pub pAllocationCallbacks: *const AllocationCallbacks<'static>,
+    pub pAllocationCallbacks: *const AllocationCallbacks,
     #[doc = " Informative callbacks for `vkAllocateMemory`, `vkFreeMemory`. Optional.\n** Optional, can be null. */"]
     pub pDeviceMemoryCallbacks: *const VmaDeviceMemoryCallbacks,
     #[doc = " \\brief Either null or a pointer to an array of limits on maximum number of bytes that can be allocated out of particular Vulkan memory heap.\n\nIf not NULL, it must be a pointer to an array of\n`VkPhysicalDeviceMemoryProperties::memoryHeapCount` elements, defining limit on\nmaximum number of bytes that can be allocated out of particular Vulkan memory\nheap.\n\nAny of the elements may be equal to `VK_WHOLE_SIZE`, which means no limit on that\nheap. This is also the default in case of `pHeapSizeLimit` = NULL.\n\nIf there is a limit defined for a heap:\n\n- If user tries to allocate more memory from that heap using this allocator,\nthe allocation fails with `VK_ERROR_OUT_OF_DEVICE_MEMORY`.\n- If the limit is smaller than heap size reported in `VkMemoryHeap::size`, the\nvalue of this limit will be reported instead when using vmaGetMemoryProperties().\n\nWarning! Using this feature may not be equivalent to installing a GPU with\nsmaller amount of memory, because graphics driver doesn't necessary fail new\nallocations with `VK_ERROR_OUT_OF_DEVICE_MEMORY` result when memory capacity is\nexceeded. It may return success and just silently migrate some device memory\nblocks to system RAM. This driver behavior can also be controlled using\nVK_AMD_memory_overallocation_behavior extension."]
@@ -413,7 +414,7 @@ pub struct VmaPoolCreateInfo {
 }
 #[doc = "Parameters of #VmaAllocation objects, that can be retrieved using function vmaGetAllocationInfo().\n\nThere is also an extended version of this structure that carries additional parameters: #VmaAllocationInfo2."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct VmaAllocationInfo {
     #[doc = " \\brief Memory type index that this allocation was allocated from.\n\nIt never changes."]
     pub memoryType: u32,
@@ -432,7 +433,7 @@ pub struct VmaAllocationInfo {
 }
 #[doc = " Extended parameters of a #VmaAllocation object that can be retrieved using function vmaGetAllocationInfo2()."]
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct VmaAllocationInfo2 {
     #[doc = " \\brief Basic parameters of the allocation.\n\nIf you need only these, you can use function vmaGetAllocationInfo() and structure #VmaAllocationInfo instead."]
     pub allocationInfo: VmaAllocationInfo,
@@ -501,7 +502,7 @@ pub struct VmaVirtualBlockCreateInfo {
     #[doc = " \\brief Use combination of #VmaVirtualBlockCreateFlagBits."]
     pub flags: VmaVirtualBlockCreateFlags,
     #[doc = " \\brief Custom CPU memory allocation callbacks. Optional.\n\nOptional, can be null. When specified, they will be used for all CPU-side memory allocations."]
-    pub pAllocationCallbacks: *const AllocationCallbacks<'static>,
+    pub pAllocationCallbacks: *const AllocationCallbacks,
 }
 #[doc = " Parameters of created virtual allocation to be passed to vmaVirtualAllocate()."]
 #[repr(C)]

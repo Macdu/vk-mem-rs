@@ -1,10 +1,9 @@
 use crate::ffi;
 use crate::Allocator;
-use ash::prelude::VkResult;
-use ash::vk;
 
 pub use ffi::VmaDefragmentationMove as DefragmentationMove;
 pub use ffi::VmaDefragmentationStats as DefragmentationStats;
+use vulkanite::vk;
 pub struct DefragmentationContext<'a> {
     allocator: &'a Allocator,
     raw: ffi::VmaDefragmentationContext,
@@ -43,10 +42,10 @@ impl<'a> DefragmentationContext<'a> {
         let result = unsafe {
             ffi::vmaBeginDefragmentationPass(self.allocator.internal, self.raw, &mut pass_info)
         };
-        if result == vk::Result::SUCCESS {
+        if result == vk::Status::Success {
             return false;
         }
-        debug_assert_eq!(result, vk::Result::INCOMPLETE);
+        debug_assert_eq!(result, vk::Status::Incomplete);
         let moves = unsafe {
             std::slice::from_raw_parts_mut(pass_info.pMoves, pass_info.moveCount as usize)
         };
@@ -56,7 +55,7 @@ impl<'a> DefragmentationContext<'a> {
             ffi::vmaEndDefragmentationPass(self.allocator.internal, self.raw, &mut pass_info)
         };
 
-        return result == vk::Result::INCOMPLETE;
+        return result == vk::Status::Incomplete;
     }
 }
 
@@ -69,10 +68,10 @@ impl Allocator {
     pub unsafe fn begin_defragmentation(
         &self,
         info: &ffi::VmaDefragmentationInfo,
-    ) -> VkResult<DefragmentationContext> {
+    ) -> vk::Result<DefragmentationContext> {
         let mut context: ffi::VmaDefragmentationContext = std::ptr::null_mut();
 
-        ffi::vmaBeginDefragmentation(self.internal, info, &mut context).result()?;
+        ffi::vmaBeginDefragmentation(self.internal, info, &mut context).into_result()?;
 
         Ok(DefragmentationContext {
             allocator: self,
