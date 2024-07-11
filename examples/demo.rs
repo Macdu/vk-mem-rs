@@ -1,5 +1,5 @@
-extern crate vulkanite;
 extern crate vk_mem;
+extern crate vulkanite;
 
 /*
 use ash::extensions::DebugReport;

@@ -3,8 +3,15 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-use vulkanite::vk::{Flags, DeviceSize, raw::DeviceMemory, raw::PhysicalDevice, raw::Device, raw::Buffer, raw::Image, raw::Instance};
-use vulkanite::vk::{AllocationCallbacks, Bool32, BufferCreateInfo, ExternalMemoryHandleTypeFlagsKHR, ImageCreateInfo, MemoryPropertyFlags, MemoryRequirements, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties, Status as Result};
+use vulkanite::vk::{
+    raw::Buffer, raw::Device, raw::DeviceMemory, raw::Image, raw::Instance, raw::PhysicalDevice,
+    DeviceSize, Flags,
+};
+use vulkanite::vk::{
+    AllocationCallbacks, Bool32, BufferCreateInfo, ExternalMemoryHandleTypeFlagsKHR,
+    ImageCreateInfo, MemoryPropertyFlags, MemoryRequirements, PhysicalDeviceMemoryProperties,
+    PhysicalDeviceProperties, Status as Result,
+};
 
 #[repr(u32)]
 #[doc = " Flags for created #VmaAllocator."]

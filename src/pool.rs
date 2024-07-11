@@ -22,7 +22,10 @@ unsafe impl Sync for AllocatorPool {}
 
 impl Allocator {
     /// Allocates Vulkan device memory and creates `AllocatorPool` object.
-    pub fn create_pool(self: &Arc<Self>, create_info: &PoolCreateInfo) -> vk::Result<AllocatorPool> {
+    pub fn create_pool(
+        self: &Arc<Self>,
+        create_info: &PoolCreateInfo,
+    ) -> vk::Result<AllocatorPool> {
         unsafe {
             let mut ffi_pool: ffi::VmaPool = std::mem::zeroed();
             let raw_info = ffi::VmaPoolCreateInfo {
@@ -116,7 +119,9 @@ impl AllocatorPool {
     ///   `VMA_ASSERT` is also fired in that case.
     /// - Other value: Error returned by Vulkan, e.g. memory mapping failure.
     pub fn check_corruption(&self) -> vk::Result<()> {
-            unsafe { ffi::vmaCheckPoolCorruption(self.allocator.internal, self.pool.0).map_success(|| ()) }
+        unsafe {
+            ffi::vmaCheckPoolCorruption(self.allocator.internal, self.pool.0).map_success(|| ())
+        }
     }
 }
 

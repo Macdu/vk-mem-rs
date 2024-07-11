@@ -1,7 +1,7 @@
 use crate::ffi::{self};
 use bitflags::bitflags;
-use vulkanite::{vk, Dispatcher, ExtendingStructure, Handle};
 use std::{marker::PhantomData, ptr};
+use vulkanite::{vk, Dispatcher, ExtendingStructure, Handle};
 
 /// Intended usage of memory.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
@@ -518,7 +518,10 @@ pub struct PoolCreateInfo<'a> {
     pub _marker: PhantomData<&'a mut ()>,
 }
 impl<'a> PoolCreateInfo<'a> {
-    pub fn push_next<T: ExtendingStructure<vk::MemoryAllocateInfo<'a>>>(&mut self, next: &'a mut T) {
+    pub fn push_next<T: ExtendingStructure<vk::MemoryAllocateInfo<'a>>>(
+        &mut self,
+        next: &'a mut T,
+    ) {
         unsafe { next.retrieve_next().set(self.memory_allocate_next.cast()) };
         self.memory_allocate_next = ptr::from_ref(next).cast();
     }
