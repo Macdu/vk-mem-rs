@@ -1,6 +1,6 @@
 [package]
 name = "vk-mem"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Graham Wihlidal <graham@wihlidal.ca>", "Zhixing Zhang <me@neoto.xin>"]
 description = "Rust ffi bindings and idiomatic wrapper for AMD Vulkan Memory Allocator (VMA)"
 homepage = "https://github.com/gwihlidal/vk-mem-rs"
@@ -37,6 +37,8 @@ vulkanite = { version = "0.0.11", features = [
     "ext_depth_stencil_resolve",
     "ext_dynamic_rendering",
     "ext_maintenance5",
+    "ext_external_memory_capabilities",
+    "ext_external_memory_win32",
 ]}
 bitflags = "2.5"
 

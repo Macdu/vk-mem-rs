@@ -7,6 +7,7 @@ mod pool;
 mod virtual_block;
 pub use definitions::*;
 pub use defragmentation::*;
+pub use ffi::{VmaDetailedStatistics, VmaStatistics};
 pub use pool::*;
 pub use virtual_block::*;
 use vulkanite::{vk, AsSlice, Handle};
@@ -16,10 +17,16 @@ use std::{
     ptr,
 };
 
+pub type RawAllocatorHandle = ffi::VmaAllocator;
+pub type RawAllocationHandle = ffi::VmaAllocation;
+pub type RawPoolHandle = ffi::VmaPool;
+pub type RawVirtualBlockHandle = ffi::VmaVirtualBlock;
+pub type RawVirtualAllocationHandle = ffi::VmaVirtualAllocation;
+
 /// Main allocator object
 pub struct Allocator {
     /// Pointer to internal VmaAllocator instance
-    internal: ffi::VmaAllocator,
+    internal: RawAllocatorHandle,
 }
 
 // Allocator is internally thread safe unless AllocatorCreateFlags::EXTERNALLY_SYNCHRONIZED is used (then you need to add synchronization!)
@@ -43,9 +50,25 @@ unsafe impl Sync for Allocator {}
 ///
 /// Some kinds allocations can be in lost state.
 #[derive(Clone, Copy, Debug)]
-pub struct Allocation(ffi::VmaAllocation);
+pub struct Allocation(RawAllocationHandle);
 unsafe impl Send for Allocation {}
 unsafe impl Sync for Allocation {}
+
+impl Allocation {
+    /// Returns the raw handle of this allocation
+    pub fn get_raw(&self) -> RawAllocationHandle {
+        self.0
+    }
+
+    /// Imports an allocation from a raw handle
+    ///
+    /// # Safety
+    ///
+    /// The handle must be a valid allocation
+    pub unsafe fn from_raw(handle: RawAllocationHandle) -> Self {
+        Allocation(handle)
+    }
+}
 
 impl Allocator {
     /// Construct a new `Allocator` using the provided options.
@@ -133,6 +156,7 @@ impl Allocator {
             vkGetDeviceImageMemoryRequirements: mem::transmute(
                 disp.get_device_image_memory_requirements.clone(),
             ),
+            vkGetMemoryWin32HandleKHR: mem::transmute(disp.get_memory_win32_handle_khr.clone()),
         };
         raw_create_info.pVulkanFunctions = &routed_functions;
 
@@ -142,6 +166,32 @@ impl Allocator {
 
             Ok(Allocator { internal })
         }
+    }
+
+    /// Consumes the allocator without dropping it and returns the underlying handle.
+    ///
+    /// Ownership is transferred to the caller.
+    pub fn into_raw(self) -> RawAllocatorHandle {
+        let handle = self.get_raw();
+        mem::forget(self);
+        handle
+    }
+
+    /// Gets the underlying raw handle
+    pub fn get_raw(&self) -> RawAllocatorHandle {
+        self.internal
+    }
+
+    /// Imports an allocator from a raw handle.
+    ///
+    /// # Safety
+    ///
+    /// `handle` is a valid allocator handle.
+    ///
+    /// Either the ownership of the allocator needs to be transferred,
+    /// or the caller must make sure that the returned value never gets dropped.
+    pub unsafe fn from_raw(handle: RawAllocatorHandle) -> Self {
+        Self { internal: handle }
     }
 
     /// The allocator fetches `vk::PhysicalDeviceProperties` from the physical device.
@@ -243,6 +293,19 @@ impl Allocator {
         unsafe {
             let mut allocation_info = MaybeUninit::zeroed();
             ffi::vmaGetAllocationInfo(self.internal, allocation.0, allocation_info.as_mut_ptr());
+            allocation_info.assume_init().into()
+        }
+    }
+
+    /// Returns extended information about specified allocation.
+    ///
+    /// Extended parameters in structure AllocationInfo2 include memory block size
+    /// and a flag telling whether the allocation has dedicated memory.
+    /// It can be useful e.g. for interop with OpenGL.
+    pub fn get_allocation_info2(&self, allocation: &Allocation) -> AllocationInfo2 {
+        unsafe {
+            let mut allocation_info = MaybeUninit::zeroed();
+            ffi::vmaGetAllocationInfo2(self.internal, allocation.0, allocation_info.as_mut_ptr());
             allocation_info.assume_init().into()
         }
     }
@@ -352,6 +415,26 @@ impl Allocator {
             ffi::vmaInvalidateAllocation(self.internal, allocation.0, offset, size)
                 .map_success(|| ())
         }
+    }
+
+    /// Invalidates memory in the host caches if needed, maps the allocation temporarily if needed, and copies data from it to a specified host pointer.
+    ///
+    /// This is a convenience function that allows to copy data from an allocation to a host pointer easily. Same behavior can be achieved by calling vmaInvalidateAllocation(), vmaMapMemory(), memcpy(), vmaUnmapMemory().
+    /// This function should be called only for allocations created in a memory type that has VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT and VK_MEMORY_PROPERTY_HOST_CACHED_BIT flag. It can be ensured e.g. by using VMA_MEMORY_USAGE_AUTO and VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT. Otherwise, the function may fail and generate a Validation Layers error. It may also work very slowly when reading from an uncached memory.
+    ///
+    /// - `src_allocation_offset` is relative to the contents of given src_allocation. If you mean whole allocation, you should pass 0. Do not pass allocation's offset within device memory block as this parameter!
+    pub unsafe fn copy_allocation_to_memory(&self, src_allocation: &Allocation, src_allocation_offset: vk::DeviceSize, dst_ref: &mut [u8]) -> vk::Result<()> {
+        ffi::vmaCopyAllocationToMemory(self.internal, src_allocation.0, src_allocation_offset, dst_ref.as_mut_ptr() as *mut std::ffi::c_void, dst_ref.len() as vk::DeviceSize).map_success(|| ())
+    }
+
+    /// Maps the allocation temporarily if needed, copies data from specified host pointer to it, and flushes the memory from the host caches if needed.
+    /// This is a convenience function that allows to copy data from a host pointer to an allocation easily. Same behavior can be achieved by calling vmaMapMemory(), memcpy(), vmaUnmapMemory(), vmaFlushAllocation().
+    ///
+    /// This function can be called only for allocations created in a memory type that has VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT flag. It can be ensured e.g. by using VMA_MEMORY_USAGE_AUTO and VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT or VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT. Otherwise, the function will fail and generate a Validation Layers error.
+    ///
+    /// - `dst_allocation_offset` is relative to the contents of given dstAllocation. If you mean whole allocation, you should pass 0. Do not pass allocation's offset within device memory block this parameter!
+    pub unsafe fn copy_memory_to_allocation(&self, dst_allocation: &Allocation, src_data: &[u8], dst_allocation_offset: vk::DeviceSize) -> vk::Result<()> {
+        ffi::vmaCopyMemoryToAllocation(self.internal, src_data.as_ptr() as *const std::ffi::c_void, dst_allocation.0, dst_allocation_offset, src_data.len() as vk::DeviceSize).map_success(|| ())
     }
 
     /// Checks magic number in margins around all allocations in given memory types (in both default and custom pools) in search for corruptions.
